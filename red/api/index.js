@@ -160,6 +160,7 @@ module.exports = {
     comms: {
         publish: comms.publish
     },
+    theme: theme,
     get adminApp() { return adminApp; },
     get nodeApp() { return nodeApp; },
     get server() { return server; }
