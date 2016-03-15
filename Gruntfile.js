@@ -132,6 +132,7 @@ module.exports = function(grunt) {
             vendor: {
                 files: {
                     "public/vendor/vendor.js": [
+                        "editor/vendor/weaver/weaver-sdk.full.js",
                         "editor/vendor/jquery/js/jquery-1.11.3.min.js",
                         "editor/vendor/bootstrap/js/bootstrap.min.js",
                         "editor/vendor/jquery/js/jquery-ui-1.10.3.custom.min.js",
