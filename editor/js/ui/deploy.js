@@ -207,14 +207,8 @@ RED.deploy = (function() {
         for (var i = 0; i < nodes.length; i++) {
             var x = 0;
             while (noflo.processes[nodes[i].name] || nodes[i].name == "") {
-                if (x < 10) {
-                    if (nodes[i].name.slice(nodes[i].name.length - 2, nodes[i].name.length - 1) == x) {
-                        nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 3);
-                    }
-                } else {//if (x < 100)
-                    if (nodes[i].name.slice(nodes[i].name.length - 3, nodes[i].name.length - 1) == x) {
-                        nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 4);
-                    }
+                if (nodes[i].name.slice(nodes[i].name.length - 2, nodes[i].name.length - 1) == x) {
+                    nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 3);
                 }
                 x++;
                 nodes[i].name += "(" + x + ")";
@@ -317,36 +311,101 @@ RED.deploy = (function() {
 
             console.log('NODES')
             console.log(RED.nodes.nodes)
+            
+
+            
 
             console.log('LINKS')
             console.log(RED.nodes.links)
+
+
+
+
+            var noflo = require('noflo')
+
+
+
+            var graph = noflo.graph.createGraph("count")
+
+            var nodes = RED.nodes.nodes
+            for(var i=0; i < nodes.length; i++){
+                var node = nodes[i];
+                
+                if (node.type === 'plusone'){
+                    graph.addNode(node.id, "weaver/PlusOne")
+                }
+                else if (node.type === 'debug'){
+                    graph.addNode(node.id, "weaver/Output")
+                }
+            }
+
+            var links = RED.nodes.links
+            for(var i=0; i < links.length; i++){
+                var link = links[i];
+                
+                var inport, outport;
+                if (link.source.type === 'plusone'){
+                    outport = 'total'
+                }
+
+                if (link.target.type === 'plusone'){
+                    inport = 'number'
+                }
+                else if (link.target.type === 'debug'){
+                    inport = 'in'
+                }
+                
+                if (link.source.type === 'inject') {
+                    graph.addInitial(link.source.payload, link.target.id, inport)
+                }
+                else {
+                    graph.addEdge(link.source.id, outport, link.target.id, inport)
+                }
+
+                
+            }
+            
+            //console.log(graph.toDOT())
+            
+            //
+            //graph.addNode("optellen1", "weaver/PlusOne")
+            //graph.addNode("optellen2", "weaver/PlusOne")
+            //graph.addNode("Display", "weaver/Output")
+            //
+            //graph.addInitial("4",   "optellen1", "number")
+            //graph.addInitial("OLA", "optellen1", "ping")
+            //
+            //graph.addEdge("optellen1", "total", "optellen2", "number")
+            //graph.addEdge("optellen2", "total", "Display", "in")
+            //
+            //
+
+
+            noflo.createNetwork(graph, function(network) {
+                network.loader.registerComponent('weaver', 'PlusOne', {
+                    getComponent: function() {
+                        return new PlusOne;
+                    }
+                });
+                network.loader.registerComponent('weaver', 'Output', {
+                    getComponent: function() {
+                        return new Output;
+                    }
+                });
+                return network.connect(function() {
+                    return network.start(console.log('Network is now running!'));
+                });
+            }, true);
             
             
-            
-            // Parse NNS
-            
-            
-            
-            
+
+
+
+
             $("#btn-deploy-icon").removeClass('fa-download');
             $("#btn-deploy-icon").addClass('spinner');
             RED.nodes.dirty(false);
-
-
-            console.log(nns);
-//            console.log(JSON.stringify(nns));
-
-            disassembledNodeRED = disassembleNodeRED(nns);
-            redNodes = disassembledNodeRED[0];
-            redWires = disassembledNodeRED[1];
-            var noflo = assembleNoFlo(redNodes, redWires);
-
-            console.log(noflo);
-//            console.log(JSON.stringify(noflo));
-
-
-
-
+            
 
             $.ajax({
                 url:"flows",
