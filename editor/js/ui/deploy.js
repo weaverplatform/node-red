@@ -207,8 +207,14 @@ RED.deploy = (function() {
         for (var i = 0; i < nodes.length; i++) {
             var x = 0;
             while (noflo.processes[nodes[i].name] || nodes[i].name == "") {
-                if (nodes[i].name.slice(nodes[i].name.length - 2, nodes[i].name.length - 1) == x) {
-                    nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 3);
+                if (x < 10) {
+                    if (nodes[i].name.slice(nodes[i].name.length - 2, nodes[i].name.length - 1) == x) {
+                        nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 3);
+                    }
+                } else {//if (x < 100)
+                    if (nodes[i].name.slice(nodes[i].name.length - 3, nodes[i].name.length - 1) == x) {
+                        nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 4);
+                    }
                 }
                 x++;
                 nodes[i].name += "(" + x + ")";
@@ -314,15 +320,16 @@ RED.deploy = (function() {
             RED.nodes.dirty(false);
 
 
-
-            console.log(JSON.stringify(nns));
+            console.log(nns);
+//            console.log(JSON.stringify(nns));
 
             disassembledNodeRED = disassembleNodeRED(nns);
             redNodes = disassembledNodeRED[0];
             redWires = disassembledNodeRED[1];
             var noflo = assembleNoFlo(redNodes, redWires);
 
-            console.log(JSON.stringify(noflo));
+            console.log(noflo);
+//            console.log(JSON.stringify(noflo));
 
 
 
