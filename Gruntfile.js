@@ -111,6 +111,7 @@ module.exports = function(grunt) {
                   "editor/js/ui/deploy.js",
                   "editor/js/ui/menu.js",
                   "editor/js/ui/keyboard.js",
+                  "editor/js/ui/components.js",
                   "editor/js/ui/tabs.js",
                   "editor/js/ui/popover.js",
                   "editor/js/ui/workspaces.js",
@@ -138,7 +139,8 @@ module.exports = function(grunt) {
                         "editor/vendor/jquery/js/jquery-ui-1.10.3.custom.min.js",
                         "editor/vendor/jquery/js/jquery.ui.touch-punch.min.js",
                         "editor/vendor/marked/marked.min.js",
-                        "editor/vendor/orion/built-editor.min.js",
+                        //"editor/vendor/orion/built-editor.min.js",
+                        "node_modules/noflo/browser/noflo.js",
                         "editor/vendor/d3/d3.v3.min.js",
                         "editor/vendor/i18next/i18next.min.js"
                     ],
@@ -288,6 +290,10 @@ module.exports = function(grunt) {
                     flatten: true
                 }]
             },
+            pipe: {
+                src: ['public/red/red.js'],
+                dest: 'public/red/red.min.js'
+            },
             release: {
                 files: [{
                     mode: true,
@@ -411,7 +417,7 @@ module.exports = function(grunt) {
 
     grunt.registerTask('build',
         'Builds editor content',
-        ['clean:build','concat:build','concat:vendor','uglify:build','sass:build','jsonlint:messages','copy:build','attachCopyright']);
+        ['clean:build','concat:build','concat:vendor','copy:pipe','sass:build','jsonlint:messages','copy:build','attachCopyright']);
 
     grunt.registerTask('dev',
         'Developer mode: run node-red, watch for source changes and build/restart',
