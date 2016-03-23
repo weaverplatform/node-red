@@ -154,6 +154,91 @@ RED.deploy = (function() {
         return 0;
     }
 
+    function disassembleNodeRED(nns) {
+        var nodes = [], wires = [];
+
+        if (nns.length) {
+            for (var i = 0; i < nns.length; i++) {
+                var item = nns[i];
+                if (item.type == "tab") {}
+                else if (item.type == "subflow") {}
+//                else if (item.type == "inject") //Start flow
+//                {
+//                    noflo.connections.push({"data": item.payload});
+//                    noflo.connections.push({"tgt": {
+//                        "process": "function",
+//                        "port": "in"
+//                    }});
+//                }
+                else // if any other node
+                {
+                    var node = {
+                        "name": item.name,
+                        "id": item.id,
+                        "component": item.type,
+                        "value": item.payload,
+                        "function": item.function
+                    }
+                }
+                if (node) { nodes.push(node); }
+
+                if (item.wires) {
+                    if (item.wires.length > 0) {
+                        for (var j = 0; j < item.wires.length; j++) {
+                            for (var k = 0; k < item.wires[j].length; k++) {
+                                wires.push({"out": item.id, "in": item.wires[j][k]})
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return [nodes, wires];
+    }
+
+    function assembleNoFlo(nodes, wires) {
+        var noflo = {
+            "name":"graph",
+            "properties": {},
+            "processes": {},
+            "connections": []
+        };
+        for (var i = 0; i < nodes.length; i++) {
+            var x = 0;
+            while (noflo.processes[nodes[i].name] || nodes[i].name == "") {
+                if (nodes[i].name.slice(nodes[i].name.length - 2, nodes[i].name.length - 1) == x) {
+                    nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 3);
+                }
+                x++;
+                nodes[i].name += "(" + x + ")";
+            }
+            noflo.processes[nodes[i].name] = {
+                "id": nodes[i].id,
+                "component": nodes[i].component,
+                "value": nodes[i].value
+            }
+        }
+
+        for (var i = 0; i < wires.length; i++) {
+            noflo.connections.push({
+                "src": {
+                    "id": wires[i].out,
+                    "process": "",
+                    "port": "out" // Check for Node-RED port on multiple ports?
+
+
+                },
+                "tgt": {
+                    "id": wires[i].in,
+                    "process": "",
+                    "port": "in" // Check for Node-RED port on multiple ports?
+                }
+            });
+        }
+        return noflo;
+    }
+
     function save(force) {
         if (RED.nodes.dirty()) {
             //$("#debug-tab-clear").click();  // uncomment this to auto clear debug on deploy
@@ -222,15 +307,26 @@ RED.deploy = (function() {
                     return;
                 }
             }
-
-
-
-
             var nns = RED.nodes.createCompleteNodeSet();
 
             $("#btn-deploy-icon").removeClass('fa-download');
             $("#btn-deploy-icon").addClass('spinner');
             RED.nodes.dirty(false);
+
+
+
+            console.log(JSON.stringify(nns));
+
+            disassembledNodeRED = disassembleNodeRED(nns);
+            redNodes = disassembledNodeRED[0];
+            redWires = disassembledNodeRED[1];
+            var noflo = assembleNoFlo(redNodes, redWires);
+
+            console.log(JSON.stringify(noflo));
+
+
+
+
 
             $.ajax({
                 url:"flows",

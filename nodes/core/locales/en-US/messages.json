@@ -134,6 +134,12 @@
         },
         "tip": "See the Info tab for help writing functions."
     },
+    "noflo-function": {
+        "label": {
+            "noflo-function": "Function"
+        },
+        "tip": "See the Info tab for help writing functions."
+    },
     "template": {
         "label": {
             "template": "Template",
