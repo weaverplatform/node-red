@@ -97,5 +97,11 @@
   },
   "engines": {
     "node": ">=0.10"
+  },
+  "noflo": {
+    "components": {
+      "PlusOne": "components/PlusOne.coffee",
+      "Function": "components/Function.coffee"
+    }
   }
 }

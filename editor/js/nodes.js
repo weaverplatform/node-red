@@ -1017,6 +1017,9 @@ RED.nodes = (function() {
         filterLinks: filterLinks,
 
         import: importNodes,
+        configNodes: configNodes,
+        nodes: nodes,
+        links: links,
 
         getAllFlowNodes: getAllFlowNodes,
         createExportableNodeSet: createExportableNodeSet,

@@ -240,7 +240,7 @@ RED.deploy = (function() {
     }
 
     function save(force) {
-        if (RED.nodes.dirty()) {
+        if (true) {
             //$("#debug-tab-clear").click();  // uncomment this to auto clear debug on deploy
 
             if (!force) {
@@ -309,6 +309,19 @@ RED.deploy = (function() {
             }
             var nns = RED.nodes.createCompleteNodeSet();
 
+            console.log('NODES')
+            console.log(RED.nodes.nodes)
+
+            console.log('LINKS')
+            console.log(RED.nodes.links)
+            
+            
+            
+            // Parse NNS
+            
+            
+            
+            
             $("#btn-deploy-icon").removeClass('fa-download');
             $("#btn-deploy-icon").addClass('spinner');
             RED.nodes.dirty(false);
