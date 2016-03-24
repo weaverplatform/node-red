@@ -101,7 +101,7 @@
   "noflo": {
     "components": {
       "PlusOne": "components/PlusOne.coffee",
-      "Function": "components/Function.coffee"
+      "FunctionNode": "components/FunctionNode.coffee"
     }
   }
 }

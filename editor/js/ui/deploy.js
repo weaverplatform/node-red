@@ -154,89 +154,115 @@ RED.deploy = (function() {
         return 0;
     }
 
-    function disassembleNodeRED(nns) {
-        var nodes = [], wires = [];
-
-        if (nns.length) {
-            for (var i = 0; i < nns.length; i++) {
-                var item = nns[i];
-                if (item.type == "tab") {}
-                else if (item.type == "subflow") {}
-//                else if (item.type == "inject") //Start flow
+//    function disassembleNodeRED(nns) {
+//        var nodes = [], wires = [];
+//
+//        if (nns.length) {
+//            for (var i = 0; i < nns.length; i++) {
+//                var item = nns[i];
+//                if (item.type == "tab") {}
+//                else if (item.type == "subflow") {}
+////                else if (item.type == "inject") //Start flow
+////                {
+////                    noflo.connections.push({"data": item.payload});
+////                    noflo.connections.push({"tgt": {
+////                        "process": "function",
+////                        "port": "in"
+////                    }});
+////                }
+//                else // if any other node
 //                {
-//                    noflo.connections.push({"data": item.payload});
-//                    noflo.connections.push({"tgt": {
-//                        "process": "function",
-//                        "port": "in"
-//                    }});
+//                    var node = {
+//                        "name": item.name,
+//                        "id": item.id,
+//                        "component": item.type,
+//                        "value": item.payload,
+//                        "function": item.function
+//                    }
 //                }
-                else // if any other node
-                {
-                    var node = {
-                        "name": item.name,
-                        "id": item.id,
-                        "component": item.type,
-                        "value": item.payload,
-                        "function": item.function
-                    }
-                }
-                if (node) { nodes.push(node); }
+//                if (node) { nodes.push(node); }
+//
+//                if (item.wires) {
+//                    if (item.wires.length > 0) {
+//                        for (var j = 0; j < item.wires.length; j++) {
+//                            for (var k = 0; k < item.wires[j].length; k++) {
+//                                wires.push({"out": item.id, "in": item.wires[j][k]})
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//
+//        return [nodes, wires];
+//    }
+//
+//    function assembleNoFlo(nodes, wires) {
+//        var noflo = {
+//            "name":"graph",
+//            "properties": {},
+//            "processes": {},
+//            "connections": []
+//        };
+//        for (var i = 0; i < nodes.length; i++) {
+//            var x = 0;
+//            while (noflo.processes[nodes[i].name] || nodes[i].name == "") {
+//                if (nodes[i].name.slice(nodes[i].name.length - 2, nodes[i].name.length - 1) == x) {
+//                    nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 3);
+//                }
+//                x++;
+//                nodes[i].name += "(" + x + ")";
+//            }
+//            noflo.processes[nodes[i].name] = {
+//                "id": nodes[i].id,
+//                "component": nodes[i].component,
+//                "value": nodes[i].value
+//            }
+//        }
+//
+//        for (var i = 0; i < wires.length; i++) {
+//            noflo.connections.push({
+//                "src": {
+//                    "id": wires[i].out,
+//                    "process": "",
+//                    "port": "out" // Check for Node-RED port on multiple ports?
+//
+//
+//                },
+//                "tgt": {
+//                    "id": wires[i].in,
+//                    "process": "",
+//                    "port": "in" // Check for Node-RED port on multiple ports?
+//                }
+//            });
+//        }
+//        return noflo;
+//    }
 
-                if (item.wires) {
-                    if (item.wires.length > 0) {
-                        for (var j = 0; j < item.wires.length; j++) {
-                            for (var k = 0; k < item.wires[j].length; k++) {
-                                wires.push({"out": item.id, "in": item.wires[j][k]})
-                            }
-                        }
-                    }
-                }
+    function addNodesToGraph(graph){
+        var nodes = RED.nodes.nodes;
+        for(var i=0; i < nodes.length; i++){
+            var node = nodes[i];
+
+            if (node.noflo && node.noflo !== 'weaver/inject'){
+                graph.addNode(node.id, node.noflo);
             }
         }
-
-        return [nodes, wires];
     }
 
-    function assembleNoFlo(nodes, wires) {
-        var noflo = {
-            "name":"graph",
-            "properties": {},
-            "processes": {},
-            "connections": []
-        };
-        for (var i = 0; i < nodes.length; i++) {
-            var x = 0;
-            while (noflo.processes[nodes[i].name] || nodes[i].name == "") {
-                if (nodes[i].name.slice(nodes[i].name.length - 2, nodes[i].name.length - 1) == x) {
-                    nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 3);
-                }
-                x++;
-                nodes[i].name += "(" + x + ")";
+    function defineEdges(graph){
+        var links = RED.nodes.links;
+        for(var i=0; i < links.length; i++) {
+            var link = links[i];
+
+            // Add Edges to graph
+            if (link.source.noflo === 'weaver/inject' && link.target.noflo) {
+                graph.addInitial(link.source.payload, link.target.id, link.target.inputNames[0])
             }
-            noflo.processes[nodes[i].name] = {
-                "id": nodes[i].id,
-                "component": nodes[i].component,
-                "value": nodes[i].value
+            else if (link.source.noflo && link.target.noflo) {
+                graph.addEdge(link.source.id, link.source.outputNames[link.sourcePort], link.target.id, link.target.inputNames[0])
             }
         }
-
-        for (var i = 0; i < wires.length; i++) {
-            noflo.connections.push({
-                "src": {
-                    "id": wires[i].out,
-                    "process": "",
-                    "port": "out" // Check for Node-RED port on multiple ports?
-
-
-                },
-                "tgt": {
-                    "id": wires[i].in,
-                    "process": "",
-                    "port": "in" // Check for Node-RED port on multiple ports?
-                }
-            });
-        }
-        return noflo;
     }
 
     function save(force) {
@@ -309,61 +335,26 @@ RED.deploy = (function() {
             }
             var nns = RED.nodes.createCompleteNodeSet();
 
-            console.log('NODES')
-            console.log(RED.nodes.nodes)
-            
+            console.log('NODES');
+            console.log(RED.nodes.nodes);
 
-            
-
-            console.log('LINKS')
-            console.log(RED.nodes.links)
+            console.log('LINKS');
+            console.log(RED.nodes.links);
 
 
 
 
-            var noflo = require('noflo')
+            var noflo = require('noflo');
 
 
 
-            var graph = noflo.graph.createGraph("count")
+            var graph = noflo.graph.createGraph("Graph");
 
-            var nodes = RED.nodes.nodes
-            for(var i=0; i < nodes.length; i++){
-                var node = nodes[i];
-                
-                if (node.type === 'plusone'){
-                    graph.addNode(node.id, "weaver/PlusOne")
-                }
-                else if (node.type === 'debug'){
-                    graph.addNode(node.id, "weaver/Output")
-                }
-            }
+            addNodesToGraph(graph);
+            defineEdges(graph);
 
-            var links = RED.nodes.links
-            for(var i=0; i < links.length; i++){
-                var link = links[i];
-                
-                var inport, outport;
-                if (link.source.type === 'plusone'){
-                    outport = 'total'
-                }
 
-                if (link.target.type === 'plusone'){
-                    inport = 'number'
-                }
-                else if (link.target.type === 'debug'){
-                    inport = 'in'
-                }
-                
-                if (link.source.type === 'inject') {
-                    graph.addInitial(link.source.payload, link.target.id, inport)
-                }
-                else {
-                    graph.addEdge(link.source.id, outport, link.target.id, inport)
-                }
 
-                
-            }
             
             //console.log(graph.toDOT())
             
@@ -377,8 +368,6 @@ RED.deploy = (function() {
             //
             //graph.addEdge("optellen1", "total", "optellen2", "number")
             //graph.addEdge("optellen2", "total", "Display", "in")
-            //
-            //
 
 
             noflo.createNetwork(graph, function(network) {
@@ -387,6 +376,11 @@ RED.deploy = (function() {
                         return new PlusOne;
                     }
                 });
+//                network.loader.registerComponent('weaver', 'FunctionNode', {
+//                    getComponent: function() {
+//                        return new FunctionNode;
+//                    }
+//                });
                 network.loader.registerComponent('weaver', 'Output', {
                     getComponent: function() {
                         return new Output;

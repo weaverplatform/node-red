@@ -25,7 +25,7 @@ module.exports = function(RED) {
     //var foo = require("foo-library");
 
     // The main node definition - most things happen in here
-    function PlusOneNode(n) {
+    function MultiplyNode(n) {
         // Create a RED node
         RED.nodes.createNode(this,n);
 
@@ -48,9 +48,9 @@ module.exports = function(RED) {
 
         // respond to inputs....
         this.on('input', function (msg) {
-            msg.payload++;
+            msg.payload * msg.payload;
             node.send(msg);
         });
     }
-    RED.nodes.registerType("PlusOne",PlusOneNode);
+    RED.nodes.registerType("Multiply", MultiplyNode);
 }

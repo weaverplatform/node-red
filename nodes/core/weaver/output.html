@@ -21,7 +21,7 @@
 
 <!-- First, the content of the edit dialog is defined.                       -->
 
-<script type="text/x-red" data-template-name="PlusOne">
+<script type="text/x-red" data-template-name="Output">
    <!-- data-template-name identifies the node type this is for              -->
 
    <!-- Each of the following divs creates a field in the edit dialog.       -->
@@ -41,7 +41,7 @@
 
 
 <!-- Next, some simple help text is provided for the node.                   -->
-<script type="text/x-red" data-help-name="PlusOne">
+<script type="text/x-red" data-help-name="Output">
    <!-- data-help-name identifies the node type this help is for             -->
    <!-- This content appears in the Info sidebar when a node is selected     -->
    <!-- The first <p> is used as the pop-up tool tip when hovering over a    -->
@@ -54,26 +54,23 @@
 <!-- Finally, the node type is registered along with all of its properties   -->
 <!-- The example below shows a small subset of the properties that can be set-->
 <script type="text/javascript">
-    RED.nodes.registerType('PlusOne',{
-      color: "#00FF00",
-      noflo: 'weaver/PlusOne',
-
-      category: 'weaver',      // the palette category
+    RED.nodes.registerType('Output',{
+        color: "#00FF00",
+        noflo: 'weaver/Output',
+        category: 'weaver',      // the palette category
         defaults: {             // defines the editable properties of the node
             name: {value:""}   //  along with default values.
         },
         inputs:1,               // set the number of inputs - only 0 or 1
         inputNames: [
-          'number'
+          'in'
         ],
-        outputs:1,              // set the number of outputs - 0 to n
-        outputNames: [
-          "total"
-        ],
+        outputs:0,              // set the number of outputs - 0 to n
+
         // set the icon (held in icons dir below where you save the node)
-        icon: "exec.png",     // saved in  icons/myicon.png
+        icon: "debug.png",     // saved in  icons/myicon.png
         label: function() {     // sets the default label contents
-            return this.name||"plusOne";
+            return this.name||"Output";
         },
         labelStyle: function() { // sets the class to apply to the label
             return this.name?"node_label_italic":"";

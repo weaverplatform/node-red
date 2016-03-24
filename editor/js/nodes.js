@@ -122,7 +122,7 @@ RED.nodes = (function() {
                             args[0] = ns+":"+args[0];
                         }
                         return RED._.apply(null,args);
-                    }
+                    };
 
                     // TODO: too tightly coupled into palette UI
                 }
@@ -159,9 +159,22 @@ RED.nodes = (function() {
         } else {
             n.ports = [];
             if (n.outputs) {
+                n.outputNames = [];
                 for (var i=0;i<n.outputs;i++) {
                     n.ports.push(i);
+                    if(n._def.outputNames) {
+                        n.outputNames.push(n._def.outputNames[i]);
+                    }
                 }
+            }
+            if (n.inputs && n._def.inputNames) {
+                n.inputNames = [];
+                for (var i=0;i<n.inputs;i++) {
+                    n.inputNames.push(n._def.inputNames[i]);
+                }
+            }
+            if (n._def.noflo) {
+                n.noflo = n._def.noflo;
             }
             n.dirty = true;
             var updatedConfigNode = false;
