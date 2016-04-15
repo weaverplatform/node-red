@@ -15,20 +15,24 @@
  **/
 var RED = (function() {
 
+    function loadNodeList() { // First nodes?_=1254782359, Source consists of all available nodes (json)
 
-    function loadNodeList() {
-        $.ajax({
-            headers: {
-                "Accept":"application/json"
-            },
-            cache: false,
-            url: 'nodes',
-            success: function(data) {
-                RED.nodes.setNodeList(data);
+//        console.log(myListForWeaver.length);
+//        for (var i = 0; i < myListForWeaver.length; i++) {
+////            weaver.add(myListForWeaver[i][0], myListForWeaver[i][1], myListForWeaver[i][2])
+//        }
+        var client = new XMLHttpRequest();
+        client.open('GET', '/servernodes/jsonnodes.txt');
+        client.send();
 
+        // WAITING FOR SEND RESPONSE -- Ajax isn't used, only needed to delay the use of client.responseText
+        client.onreadystatechange = function() {
+            if (client.readyState == 4 && client.status == 200) {
+                var JSONData = JSON.parse(client.responseText);
+                RED.nodes.setNodeList(JSONData);
                 var nsCount = 0;
-                for(var i=0;i<data.length;i++) {
-                    var ns = data[i];
+                for(var i=0;i<JSONData.length;i++) {
+                    var ns = JSONData[i];
                     if (ns.module != "node-red") {
                         nsCount++;
                         RED.i18n.loadCatalog(ns.id, function() {
@@ -43,18 +47,49 @@ var RED = (function() {
                     loadNodes();
                 }
             }
-        });
+        };
+//        $.ajax({
+//            headers: {
+//                "Accept":"application/json"
+//            },
+//            cache: false,
+//            url: 'nodes',
+//            success: function(data) {
+//                var JSONData = JSON.parse(client.responseText);
+//                RED.nodes.setNodeList(JSONData);
+//
+//                var nsCount = 0;
+//                for(var i=0;i<JSONData.length;i++) {
+//                    var ns = JSONData[i];
+//                    if (ns.module != "node-red") {
+//                        nsCount++;
+//                        RED.i18n.loadCatalog(ns.id, function() {
+//                            nsCount--;
+//                            if (nsCount === 0) {
+//                                loadNodes();
+//                            }
+//                        });
+//                    }
+//                }
+//                if (nsCount === 0) {
+//                    loadNodes();
+//                }
+//            }
+//        });
     }
 
-    function loadNodes() {
-        $.ajax({
-            headers: {
-                "Accept":"text/html"
-            },
-            cache: false,
-            url: 'nodes',
-            success: function(data) {
-                $("body").append(data);
+    function loadNodes() { // Second nodes?_=1254782359, Source consists of all available nodes (txt)
+        var client = new XMLHttpRequest();
+        client.open('GET', '/servernodes/textnodes.txt');
+        client.send();
+
+        // WAITING FOR SEND RESPONSE -- Ajax isn't used, only needed to delay the use of client.responseText
+
+
+        client.onreadystatechange = function() {
+            if (client.readyState == 4 && client.status == 200) {
+                var nodeData = client.responseText;
+                $("body").append(nodeData);
                 $("body").i18n();
 
 
@@ -63,91 +98,115 @@ var RED = (function() {
                 $("#palette-search").show();
                 loadFlows();
             }
-        });
+        };
+//        $.ajax({
+//            headers: {
+//                "Accept":"text/html"
+//            },
+//            cache: false,
+//            url: 'nodes',
+//            success: function(data) {
+//                var nodeData = client.responseText;
+//                $("body").append(nodeData);
+//                $("body").i18n();
+//
+//
+//                $(".palette-spinner").hide();
+//                $(".palette-scroll").show();
+//                $("#palette-search").show();
+//                loadFlows();
+//            }
+//        });
     }
 
-    function loadFlows() {
-        $.ajax({
-            headers: {
-                "Accept":"application/json"
-            },
-            cache: false,
-            url: 'flows',
-            success: function(nodes) {
-                RED.nodes.import(nodes);
-                RED.nodes.dirty(false);
-                RED.view.redraw(true);
-                RED.comms.subscribe("status/#",function(topic,msg) {
-                    var parts = topic.split("/");
-                    var node = RED.nodes.node(parts[1]);
-                    if (node) {
-                        if (msg.text) {
-                            msg.text = node._(msg.text.toString(),{defaultValue:msg.text.toString()});
-                        }
-                        node.status = msg;
-                        if (statusEnabled) {
-                            node.dirty = true;
-                            RED.view.redraw();
-                        }
-                    }
-                });
-                RED.comms.subscribe("node/#",function(topic,msg) {
-                    var i,m;
-                    var typeList;
-                    var info;
+    function loadFlows() { // Flows?_=1254782359, Source consists of all the flow data
+        var weaver = window.weaver = new Weaver().connect('https://weaver-server.herokuapp.com');
+        weaver.get('JSON').then(function (entity) {
 
-                    if (topic == "node/added") {
-                        var addedTypes = [];
-                        for (i=0;i<msg.length;i++) {
-                            m = msg[i];
-                            var id = m.id;
-                            RED.nodes.addNodeSet(m);
-                            addedTypes = addedTypes.concat(m.types);
-                            RED.i18n.loadCatalog(id, function() {
-                                $.get('nodes/'+id, function(data) {
-                                    $("body").append(data);
-                                });
-                            });
-                        }
-                        if (addedTypes.length) {
-                            typeList = "<ul><li>"+addedTypes.join("</li><li>")+"</li></ul>";
-                            RED.notify(RED._("palette.event.nodeAdded", {count:addedTypes.length})+typeList,"success");
-                        }
-                    } else if (topic == "node/removed") {
-                        for (i=0;i<msg.length;i++) {
-                            m = msg[i];
-                            info = RED.nodes.removeNodeSet(m.id);
-                            if (info.added) {
-                                typeList = "<ul><li>"+m.types.join("</li><li>")+"</li></ul>";
-                                RED.notify(RED._("palette.event.nodeRemoved", {count:m.types.length})+typeList,"success");
+//            $.ajax({
+//                headers: {
+//                    "Accept": "application/json"
+//                },
+//                cache: false,
+//                url: 'flows',
+//                success: function (nodes) {
+//                    RED.nodes.import(JSON.parse(nodes));
+                    RED.nodes.import(JSON.parse(entity.json));
+                    RED.nodes.dirty(false);
+                    RED.view.redraw(true);
+                    RED.comms.subscribe("status/#", function (topic, msg) {
+                        var parts = topic.split("/");
+                        var node = RED.nodes.node(parts[1]);
+                        if (node) {
+                            if (msg.text) {
+                                msg.text = node._(msg.text.toString(), {defaultValue: msg.text.toString()});
+                            }
+                            node.status = msg;
+                            if (statusEnabled) {
+                                node.dirty = true;
+                                RED.view.redraw();
                             }
                         }
-                    } else if (topic == "node/enabled") {
-                        if (msg.types) {
-                            info = RED.nodes.getNodeSet(msg.id);
-                            if (info.added) {
-                                RED.nodes.enableNodeSet(msg.id);
-                                typeList = "<ul><li>"+msg.types.join("</li><li>")+"</li></ul>";
-                                RED.notify(RED._("palette.event.nodeEnabled", {count:msg.types.length})+typeList,"success");
-                            } else {
-                                $.get('nodes/'+msg.id, function(data) {
-                                    $("body").append(data);
-                                    typeList = "<ul><li>"+msg.types.join("</li><li>")+"</li></ul>";
-                                    RED.notify(RED._("palette.event.nodeAdded", {count:msg.types.length})+typeList,"success");
+                    });
+                    RED.comms.subscribe("node/#", function (topic, msg) {
+                        var i, m;
+                        var typeList;
+                        var info;
+
+                        if (topic == "node/added") {
+                            var addedTypes = [];
+                            for (i = 0; i < msg.length; i++) {
+                                m = msg[i];
+                                var id = m.id;
+                                RED.nodes.addNodeSet(m);
+                                addedTypes = addedTypes.concat(m.types);
+                                RED.i18n.loadCatalog(id, function () {
+                                    $.get('nodes/' + id, function (data) {
+                                        $("body").append(data);
+                                    });
                                 });
                             }
+                            if (addedTypes.length) {
+                                typeList = "<ul><li>" + addedTypes.join("</li><li>") + "</li></ul>";
+                                RED.notify(RED._("palette.event.nodeAdded", {count: addedTypes.length}) + typeList, "success");
+                            }
+                        } else if (topic == "node/removed") {
+                            for (i = 0; i < msg.length; i++) {
+                                m = msg[i];
+                                info = RED.nodes.removeNodeSet(m.id);
+                                if (info.added) {
+                                    typeList = "<ul><li>" + m.types.join("</li><li>") + "</li></ul>";
+                                    RED.notify(RED._("palette.event.nodeRemoved", {count: m.types.length}) + typeList, "success");
+                                }
+                            }
+                        } else if (topic == "node/enabled") {
+                            if (msg.types) {
+                                info = RED.nodes.getNodeSet(msg.id);
+                                if (info.added) {
+                                    RED.nodes.enableNodeSet(msg.id);
+                                    typeList = "<ul><li>" + msg.types.join("</li><li>") + "</li></ul>";
+                                    RED.notify(RED._("palette.event.nodeEnabled", {count: msg.types.length}) + typeList, "success");
+                                } else {
+                                    $.get('nodes/' + msg.id, function (data) {
+                                        $("body").append(data);
+                                        typeList = "<ul><li>" + msg.types.join("</li><li>") + "</li></ul>";
+                                        RED.notify(RED._("palette.event.nodeAdded", {count: msg.types.length}) + typeList, "success");
+                                    });
+                                }
+                            }
+                        } else if (topic == "node/disabled") {
+                            if (msg.types) {
+                                RED.nodes.disableNodeSet(msg.id);
+                                typeList = "<ul><li>" + msg.types.join("</li><li>") + "</li></ul>";
+                                RED.notify(RED._("palette.event.nodeDisabled", {count: msg.types.length}) + typeList, "success");
+                            }
                         }
-                    } else if (topic == "node/disabled") {
-                        if (msg.types) {
-                            RED.nodes.disableNodeSet(msg.id);
-                            typeList = "<ul><li>"+msg.types.join("</li><li>")+"</li></ul>";
-                            RED.notify(RED._("palette.event.nodeDisabled", {count:msg.types.length})+typeList,"success");
-                        }
-                    }
-                    // Refresh flow library to ensure any examples are updated
-                    RED.library.loadFlowLibrary();
-                });
-            }
+                        // Refresh flow library to ensure any examples are updated
+                        RED.library.loadFlowLibrary();
+                    });
+    //                });
+//                }
+//            });
         });
     }
 

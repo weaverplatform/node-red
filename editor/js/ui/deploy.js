@@ -154,91 +154,6 @@ RED.deploy = (function() {
         return 0;
     }
 
-//    function disassembleNodeRED(nns) {
-//        var nodes = [], wires = [];
-//
-//        if (nns.length) {
-//            for (var i = 0; i < nns.length; i++) {
-//                var item = nns[i];
-//                if (item.type == "tab") {}
-//                else if (item.type == "subflow") {}
-////                else if (item.type == "inject") //Start flow
-////                {
-////                    noflo.connections.push({"data": item.payload});
-////                    noflo.connections.push({"tgt": {
-////                        "process": "function",
-////                        "port": "in"
-////                    }});
-////                }
-//                else // if any other node
-//                {
-//                    var node = {
-//                        "name": item.name,
-//                        "id": item.id,
-//                        "component": item.type,
-//                        "value": item.payload,
-//                        "function": item.function
-//                    }
-//                }
-//                if (node) { nodes.push(node); }
-//
-//                if (item.wires) {
-//                    if (item.wires.length > 0) {
-//                        for (var j = 0; j < item.wires.length; j++) {
-//                            for (var k = 0; k < item.wires[j].length; k++) {
-//                                wires.push({"out": item.id, "in": item.wires[j][k]})
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//
-//        return [nodes, wires];
-//    }
-//
-//    function assembleNoFlo(nodes, wires) {
-//        var noflo = {
-//            "name":"graph",
-//            "properties": {},
-//            "processes": {},
-//            "connections": []
-//        };
-//        for (var i = 0; i < nodes.length; i++) {
-//            var x = 0;
-//            while (noflo.processes[nodes[i].name] || nodes[i].name == "") {
-//                if (nodes[i].name.slice(nodes[i].name.length - 2, nodes[i].name.length - 1) == x) {
-//                    nodes[i].name = nodes[i].name.slice(0, nodes[i].name.length - 3);
-//                }
-//                x++;
-//                nodes[i].name += "(" + x + ")";
-//            }
-//            noflo.processes[nodes[i].name] = {
-//                "id": nodes[i].id,
-//                "component": nodes[i].component,
-//                "value": nodes[i].value
-//            }
-//        }
-//
-//        for (var i = 0; i < wires.length; i++) {
-//            noflo.connections.push({
-//                "src": {
-//                    "id": wires[i].out,
-//                    "process": "",
-//                    "port": "out" // Check for Node-RED port on multiple ports?
-//
-//
-//                },
-//                "tgt": {
-//                    "id": wires[i].in,
-//                    "process": "",
-//                    "port": "in" // Check for Node-RED port on multiple ports?
-//                }
-//            });
-//        }
-//        return noflo;
-//    }
-
     function addNodesToGraph(graph){
         var nodes = RED.nodes.nodes;
         for(var i=0; i < nodes.length; i++){
@@ -349,15 +264,15 @@ RED.deploy = (function() {
 
 
             var graph = noflo.graph.createGraph("Graph");
+            var weaver = window.weaver = new Weaver().connect('https://weaver-server.herokuapp.com');
 
             addNodesToGraph(graph);
             defineEdges(graph);
 
 
 
-            
+
             //console.log(graph.toDOT())
-            
             //
             //graph.addNode("optellen1", "weaver/PlusOne")
             //graph.addNode("optellen2", "weaver/PlusOne")
@@ -390,8 +305,8 @@ RED.deploy = (function() {
                     return network.start(console.log('Network is now running!'));
                 });
             }, true);
-            
-            
+
+
 
 
 
@@ -399,17 +314,25 @@ RED.deploy = (function() {
             $("#btn-deploy-icon").removeClass('fa-download');
             $("#btn-deploy-icon").addClass('spinner');
             RED.nodes.dirty(false);
-            
 
-            $.ajax({
-                url:"flows",
-                type: "POST",
-                data: JSON.stringify(nns),
-                contentType: "application/json; charset=utf-8",
-                headers: {
-                    "Node-RED-Deployment-Type":deploymentType
-                }
-            }).done(function(data,textStatus,xhr) {
+            // Add JSON to Weaver
+            weaver.add({'json':JSON.stringify(nns)}, 'json', 'JSON');
+
+//            weaver.get('JSON').then(function (entity) {
+//                console.log(entity.json);
+//                var weaverJSON = JSON.parse(entity.json);
+//                console.log(weaverJSON);
+//            });
+
+//            $.ajax({
+//                url: "flows",
+//                type: "POST",
+//                data: JSON.stringify(nns),
+//                contentType: "application/json; charset=utf-8",
+//                headers: {
+//                    "Node-RED-Deployment-Type":deploymentType
+//                }
+//            }).done(function(data,textStatus,xhr) {
                 if (hasUnusedConfig) {
                     RED.notify(
                     '<p>'+RED._("deploy.successfulDeploy")+'</p>'+
@@ -435,17 +358,17 @@ RED.deploy = (function() {
                 RED.history.markAllDirty();
                 RED.view.redraw();
                 RED.events.emit("deploy");
-            }).fail(function(xhr,textStatus,err) {
-                RED.nodes.dirty(true);
-                if (xhr.responseText) {
-                    RED.notify(RED._("notification.error",{message:xhr.responseText}),"error");
-                } else {
-                    RED.notify(RED._("notification.error",{message:RED._("deploy.errors.noResponse")}),"error");
-                }
-            }).always(function() {
+//            }).fail(function(xhr,textStatus,err) {
+//                RED.nodes.dirty(true);
+//                if (xhr.responseText) {
+//                    RED.notify(RED._("notification.error",{message:xhr.responseText}),"error");
+//                } else {
+//                    RED.notify(RED._("notification.error",{message:RED._("deploy.errors.noResponse")}),"error");
+//                }
+//            }).always(function() {
                 $("#btn-deploy-icon").removeClass('spinner');
                 $("#btn-deploy-icon").addClass('fa-download');
-            });
+//            });
         }
     }
 

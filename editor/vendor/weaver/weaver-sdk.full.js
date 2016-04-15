@@ -12069,15 +12069,18 @@ function toArray(list, index) {
 
   module.exports = Entity = (function() {
     Entity.create = function(object) {
-      var data, fetched, id, key, type, value;
+      var data, fetched, id, key, type, value, _ref;
       type = object['_META'].type;
       fetched = object['_META'].fetched;
       id = object['_META'].id;
-      data = {};
-      for (key in object) {
-        if (!__hasProp.call(object, key)) continue;
-        value = object[key];
-        if (key !== '_META') {
+      data = object['_ATTRIBUTES'];
+      if (data == null) {
+        data = {};
+      }
+      if (object['_RELATIONS'] != null) {
+        _ref = object['_RELATIONS'];
+        for (key in _ref) {
+          value = _ref[key];
           data[key] = value;
         }
       }
@@ -12221,16 +12224,29 @@ function toArray(list, index) {
     };
 
     Entity.prototype.$push = function(attribute, value) {
+      var payload, subjId;
       if (isEntity(attribute)) {
         if (this[attribute.$id()] == null) {
           this[attribute.$id()] = attribute;
         }
+        subjId = null;
+        if (attribute.subject != null) {
+          subjId = attribute.subject.$id();
+        }
         if (this.$.weaver.channel != null) {
-          return this.$.weaver.channel.link({
-            id: this.$.id,
+          payload = {
+            source: {
+              id: this.$id(),
+              type: this.$type(),
+              subject: subjId
+            },
             key: attribute.$id(),
-            target: attribute.$id()
-          });
+            target: {
+              id: attribute.$id(),
+              type: attribute.$type()
+            }
+          };
+          return this.$.weaver.channel.link(payload);
         }
       } else {
         if (value != null) {
@@ -12242,17 +12258,25 @@ function toArray(list, index) {
         }
         if (this.$.weaver.channel != null) {
           if (isEntity(value)) {
-            return this.$.weaver.channel.link({
-              id: this.$.id,
+            payload = {
+              source: {
+                id: this.$id(),
+                type: this.$type()
+              },
               key: attribute,
-              target: value.$id()
-            });
+              target: {
+                id: value.$id(),
+                type: value.$type()
+              }
+            };
+            return this.$.weaver.channel.link(payload);
           } else {
-            return this.$.weaver.channel.update({
-              id: this.$.id,
+            payload = {
+              id: this.$id(),
               attribute: attribute,
               value: this[attribute]
-            });
+            };
+            return this.$.weaver.channel.update(payload);
           }
         }
       }
@@ -12278,10 +12302,9 @@ function toArray(list, index) {
               key: key
             });
           } else {
-            return this.$.weaver.channel.update({
+            return this.$.weaver.channel.remove({
               id: this.$.id,
-              attribute: key,
-              value: null
+              attribute: key
             });
           }
         }
@@ -12290,7 +12313,7 @@ function toArray(list, index) {
 
     Entity.prototype.$destroy = function() {
       if (this.$.weaver.channel != null) {
-        return this.$.weaver.channel["delete"]({
+        return this.$.weaver.channel.destroy({
           id: this.$.id
         });
       }
@@ -12528,8 +12551,12 @@ function toArray(list, index) {
       return this.emit('unlink', payload);
     };
 
-    Socket.prototype["delete"] = function(payload) {
-      return this.emit('delete', payload);
+    Socket.prototype.destroy = function(payload) {
+      return this.emit('destroy', payload);
+    };
+
+    Socket.prototype.remove = function(payload) {
+      return this.emit('remove', payload);
     };
 
     Socket.prototype.onUpdate = function(id, callback) {
@@ -12615,8 +12642,8 @@ function toArray(list, index) {
       return this.repository.store(entity);
     };
 
-    Weaver.prototype.collection = function(data, id) {
-      return this.add(data, '$COLLECTION', id);
+    Weaver.prototype.collection = function(id) {
+      return this.add({}, '$COLLECTION', id);
     };
 
     Weaver.prototype.get = function(id, opts) {

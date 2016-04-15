@@ -91,32 +91,42 @@ RED.settings = (function () {
     }
 
     var load = function(done) {
-        $.ajax({
-            headers: {
-                "Accept": "application/json"
-            },
-            dataType: "json",
-            cache: false,
-            url: 'settings',
-            success: function (data) {
-                setProperties(data);
-                if (RED.settings.user && RED.settings.user.anonymous) {
-                    RED.settings.remove("auth-tokens");
-                }
-                console.log("Node-RED: " + data.version);
-                done();
-            },
-            error: function(jqXHR,textStatus,errorThrown) {
-                if (jqXHR.status === 401) {
-                    if (/[?&]access_token=(.*?)(?:$|&)/.test(window.location.search)) {
-                        window.location.search = "";
+        var client = new XMLHttpRequest();
+        client.open('GET', '/servernodes/settings.txt');
+        client.send();
+
+//        $.ajax({
+//            headers: {
+//                "Accept": "application/json"
+//            },
+//            dataType: "json",
+//            cache: false,
+//            url: 'settings',
+//            success: function (data) {
+
+                client.onreadystatechange = function() {
+                    if (client.readyState == 4 && client.status == 200) {
+                        var settings = JSON.parse(client.responseText)
+                        setProperties(settings);
+                        if (RED.settings.user && RED.settings.user.anonymous) {
+                            RED.settings.remove("auth-tokens");
+                        }
+                        console.log("Node-RED: " + settings.version);
+                        done();
                     }
-                    RED.user.login(function() { load(done); });
-                 } else {
-                     console.log("Unexpected error:",jqXHR.status,textStatus);
-                 }
-            }
-        });
+                };
+//            },
+//            error: function(jqXHR,textStatus,errorThrown) {
+//                if (jqXHR.status === 401) {
+//                    if (/[?&]access_token=(.*?)(?:$|&)/.test(window.location.search)) {
+//                        window.location.search = "";
+//                    }
+//                    RED.user.login(function() { load(done); });
+//                 } else {
+//                     console.log("Unexpected error:",jqXHR.status,textStatus);
+//                 }
+//            }
+//        });
     };
 
     function theme(property,defaultValue) {
