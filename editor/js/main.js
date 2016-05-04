@@ -25,7 +25,7 @@ var RED = (function() {
         client.open('GET', '/servernodes/jsonnodes.txt');
         client.send();
 
-        // WAITING FOR SEND RESPONSE -- Ajax isn't used, only needed to delay the use of client.responseText
+        // WAITING FOR SEND RESPONSE
         client.onreadystatechange = function() {
             if (client.readyState == 4 && client.status == 200) {
                 var JSONData = JSON.parse(client.responseText);
@@ -131,7 +131,15 @@ var RED = (function() {
 //                url: 'flows',
 //                success: function (nodes) {
 //                    RED.nodes.import(JSON.parse(nodes));
-                    RED.nodes.import(JSON.parse(entity.json));
+
+            var nodes = JSON.parse(entity.json);
+
+//            // CLEAR ALL NODES
+//            nodes = nodes.filter(function(returnableNodes) {
+//                return returnableNodes.name === '3243567';
+//            });
+
+                    RED.nodes.import(nodes);
                     RED.nodes.dirty(false);
                     RED.view.redraw(true);
                     RED.comms.subscribe("status/#", function (topic, msg) {

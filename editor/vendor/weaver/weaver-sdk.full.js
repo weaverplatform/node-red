@@ -12183,6 +12183,19 @@ function toArray(list, index) {
       return links;
     };
 
+    Entity.prototype.$linksArray = function() {
+      var key, value, _results;
+      _results = [];
+      for (key in this) {
+        if (!__hasProp.call(this, key)) continue;
+        value = this[key];
+        if (isEntity(value)) {
+          _results.push(value);
+        }
+      }
+      return _results;
+    };
+
     Entity.prototype.$isFetched = function(eagerness, visited) {
       var fetched, key, subEntity, _ref;
       if (eagerness == null) {
