@@ -154,32 +154,6 @@ RED.deploy = (function() {
         return 0;
     }
 
-    function addNodesToGraph(graph){
-        var nodes = RED.nodes.nodes;
-        for(var i=0; i < nodes.length; i++){
-            var node = nodes[i];
-
-            if (node.noflo && node.noflo !== 'weaver/inject'){
-                graph.addNode(node.id, node.noflo);
-            }
-        }
-    }
-
-    function defineEdges(graph){
-        var links = RED.nodes.links;
-        for(var i=0; i < links.length; i++) {
-            var link = links[i];
-
-            // Add Edges to graph
-            if (link.source.noflo === 'weaver/inject' && link.target.noflo) {
-                graph.addInitial(link.source.payload, link.target.id, link.target.inputNames[0])
-            }
-            else if (link.source.noflo && link.target.noflo) {
-                graph.addEdge(link.source.id, link.source.outputNames[link.sourcePort], link.target.id, link.target.inputNames[0])
-            }
-        }
-    }
-
     // This function requires a noflo graph and will translate it to a Weaver Object on the heroku server.
     function graphToWeaverObject(graph)
     {
@@ -218,13 +192,13 @@ RED.deploy = (function() {
                     'tgt_process': myInits[0].to.node, 'tgt_port': myInits[0].to.port}, '$NOFLO_CONNECTION'));
                 myInits.shift(); // Removes object [0] from list
             }
-
         });
     }
+
     // This function requires the name (id) of a Weaver Object/flow which will be translated into a noflo graph
     function weaverObjectToGraph(flowName)
     {
-        var graph2 = noflo.graph.createGraph("Graph2");
+        var graph = noflo.graph.createGraph(flowName);
 
         // Retrieve a Weaver object by it's name.
         weaver.get(flowName, {eagerness: -1}).then(function(entity) {
@@ -233,25 +207,87 @@ RED.deploy = (function() {
             // Get the list of all processes from the Weaver flow and add it one-by-one to the graph
             // This MUST be done before adding the connections
             var myNodes = flow.processes.$linksArray();
-            console.log(myNodes.length);
             while (myNodes.length > 0) {
-                graph2.addNode(myNodes[0]['name:'], myNodes[0].component); // the
+                graph.addNode(myNodes[0]['name:'], myNodes[0].component); // the
                 myNodes.shift(); // Removes object [0] from list
             }
 
             // Get a list of the connections and add them one-by-one to the graph
             // It is impossible to add a edge to a non-existant node
             var myConnections = flow.connections.$linksArray();
-            console.log(myConnections.length);
             while (myConnections.length > 0) {
                 if (myConnections[0].data) /// If the connection has Data, it is an initial connection otherwise it's an edge
-                    graph2.addInitial(myConnections[0].data, myConnections[0].tgt_process, myConnections[0].tgt_port);
+                    graph.addInitial(myConnections[0].data, myConnections[0].tgt_process, myConnections[0].tgt_port);
                 else
-                    graph2.addEdge(myConnections[0].src_process, myConnections[0].src_port, myConnections[0].tgt_process, myConnections[0].tgt_port);
+                    graph.addEdge(myConnections[0].src_process, myConnections[0].src_port, myConnections[0].tgt_process, myConnections[0].tgt_port);
 
                 myConnections.shift(); // Removes object [0] from list
             }
         });
+    }
+
+    function getNodeREDTabs(nns)
+    {
+        var tabs = [];
+        for (var i = 0; i < nns.length; i++)
+        {
+            if (nns[i].type === 'tab')
+            {
+                tabs.push(nns[i]);
+            }
+        }
+        return tabs;
+    }
+
+    function createNofloFromNodeRED(nns, nodes, links)
+    {
+        var graphs = [];
+        var flowTabs = getNodeREDTabs(nns);
+
+        // Loop through all the different flows and create a noflo graph of them
+        for (var i=0; i < flowTabs.length; i++) {
+            var graph = noflo.graph.createGraph(flowTabs[i].label);
+
+            // Add Nodes to Graph
+            for (var j = 0; j < nodes.length; j++) {
+                var node = nodes[j];
+
+                if (node.z === flowTabs[i].id) {
+                    if (node.inputs > 0) {
+                        if (node.name) // If name is given, use it, otherwise use UID
+                            graph.addNode(node.name, node.type);
+                        else
+                            graph.addNode(node.id, node.type);
+                    }
+                }
+            }
+
+            // Define Edges
+            for (var j = 0; j < links.length; j++) {
+                var link = links[j];
+                if (link.target.z === flowTabs[i].id) {
+                    // Add Edges to graph
+                    if (link.source.inputs == 0) {
+                        console.log(link.source);
+                        if (link.target.name)
+                            graph.addInitial(link.source.payload, link.target.name, link.target.type);
+                        else
+                            graph.addInitial(link.source.payload, link.target.id, link.target.type);
+                    } else {
+                        if (link.source.name && link.target.name) // If both names are given
+                            graph.addEdge(link.source.name, link.sourcePort, link.target.name, link.target.type);
+                        else if (link.source.name && !link.target.name) // If src name is given, target not
+                            graph.addEdge(link.source.name, link.sourcePort, link.target.id, link.target.type);
+                        else if (!link.source.name && link.target.name) // If src name is not given and target name is
+                            graph.addEdge(link.source.id, link.sourcePort, link.target.name, link.target.type);
+                        else // If neither of the names are given
+                            graph.addEdge(link.source.id, link.sourcePort, link.target.id, link.target.type);
+                    }
+                }
+            }
+            graphs.push(graph);
+        }
+        return graphs;
     }
 
     function save(force) {
@@ -330,25 +366,29 @@ RED.deploy = (function() {
 //            console.log('LINKS');
 //            console.log(RED.nodes.links);
 
+            console.log(nns);
 
             var noflo = require('noflo');
 
             var graph = noflo.graph.createGraph("Graph");
             var weaver = window.weaver = new Weaver().connect('https://weaver-server.herokuapp.com');
 
-            graph.addNode("optellen1", "weaver/PlusOne");
-            graph.addNode("optellen2", "weaver/PlusOne");
-            graph.addNode("Display", "weaver/Output");
+//            graph.addNode("optellen1", "weaver/PlusOne");
+//            graph.addNode("optellen2", "weaver/PlusOne");
+//            graph.addNode("Display", "weaver/Output");
+//
+//            graph.addInitial("4",   "optellen1", "number");
+//            graph.addInitial("OLA", "optellen1", "ping");
+//
+//            graph.addEdge("optellen1", "total", "optellen2", "number");
+//            graph.addEdge("optellen2", "total", "Display", "in");
 
-            graph.addInitial("4",   "optellen1", "number");
-            graph.addInitial("OLA", "optellen1", "ping");
+//            // Create Weaver flow (for all flows) and recreate noflo graph - for testing purposes
+            var graphs = createNofloFromNodeRED(nns, RED.nodes.nodes, RED.nodes.links);
+            for (var i = 0; i < graphs.length; i++)
+                graphToWeaverObject(graphs[i]);
 
-            graph.addEdge("optellen1", "total", "optellen2", "number");
-            graph.addEdge("optellen2", "total", "Display", "in");
-
-            // Create Weaver flow and recreate noflo graph - for testing purposes
-            graphToWeaverObject(graph);
-            weaverObjectToGraph(graph.name);
+//            weaverObjectToGraph(graph.name);
 
 
             noflo.createNetwork(graph, function(network) {
