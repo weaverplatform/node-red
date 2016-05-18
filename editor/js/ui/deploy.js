@@ -154,44 +154,57 @@ RED.deploy = (function() {
         return 0;
     }
 
-    // This function requires a noflo graph and will translate it to a Weaver Object on the heroku server.
+    /**
+     * This function requires a noflo graph and will translate it to a Weaver Object on the heroku server.
+     * This makes use of the Weaver-sdk.full.js
+     *
+     * @Param graph is a noflo graph created from a Node-RED flow
+     */
     function graphToWeaverObject(graph)
     {
-        // Create a new Weaver object/flow with the name of the graph
-        weaver.add({name: graph.name}, '$NOFLO_FLOW', graph.name);
-        weaver.get(graph.name, {eagerness: -1}).then(function(entity){
-            window.flow = entity;
+        // Retrieve the $ROOT Object which enlists all behaviours (for later retrieval)
+        weaver.get('Weaver Behaviours', {eagerness: -1}).then(function(entity){
+            window.behaviourList = entity;
 
-            // Create and push the noflo processes as a collection to a Weaver flow
-            flow.processes = weaver.collection();
-            flow.$push('processes');
-            var myNodes = graph.nodes;
-            while (myNodes.length > 0) {
-                flow.processes.$push(weaver.add({'component': myNodes[0].component, 'name:': myNodes[0].id},
-                    '$NOFLO_PROCESS'));
-                myNodes.shift(); // Removes object [0] from list
-            }
+            // Create a new Weaver object/flow with the name of the graph
+            weaver.add({name: graph.name}, '$NOFLO_FLOW', graph.name);
+            weaver.get(graph.name, {eagerness: -1}).then(function(entity){
+                window.flow = entity;
 
-            // Create and push the noflo connections as a collection to a Weaver flow
-            flow.connections = weaver.collection();
-            flow.$push('connections');
+                // Create and push the noflo processes as a collection to a Weaver flow
+                flow.processes = weaver.collection();
+                flow.$push('processes');
+                var myNodes = graph.nodes;
+                while (myNodes.length > 0) {
+                    flow.processes.$push(weaver.add({'component': myNodes[0].component, 'name:': myNodes[0].id},
+                        '$NOFLO_PROCESS'));
+                    myNodes.shift(); // Removes object [0] from list
+                }
 
-            var myEdges = graph.edges;
-            while (myEdges.length > 0) {
-                flow.connections.$push(weaver.add({
-                        'src_process': myEdges[0].from.node, 'src_port': myEdges[0].from.port,
-                        'tgt_process': myEdges[0].to.node, 'tgt_port': myEdges[0].to.port},
-                    '$NOFLO_CONNECTION'));
-                myEdges.shift(); // Removes object [0] from list
-            }
+                // Create and push the noflo connections as a collection to a Weaver flow
+                flow.connections = weaver.collection();
+                flow.$push('connections');
 
-            // Push the noflo initializers to the connection collection of the Weaver flow
-            var myInits = graph.initializers;
-            while (myInits.length > 0) {
-                flow.connections.$push(weaver.add({'data': myInits[0].from.data,
-                    'tgt_process': myInits[0].to.node, 'tgt_port': myInits[0].to.port}, '$NOFLO_CONNECTION'));
-                myInits.shift(); // Removes object [0] from list
-            }
+                var myEdges = graph.edges;
+                while (myEdges.length > 0) {
+                    flow.connections.$push(weaver.add({
+                            'src_process': myEdges[0].from.node, 'src_port': myEdges[0].from.port,
+                            'tgt_process': myEdges[0].to.node, 'tgt_port': myEdges[0].to.port},
+                        '$NOFLO_CONNECTION'));
+                    myEdges.shift(); // Removes object [0] from list
+                }
+
+                // Push the noflo initializers to the connection collection of the Weaver flow
+                var myInits = graph.initializers;
+                while (myInits.length > 0) {
+                    flow.connections.$push(weaver.add({'data': myInits[0].from.data,
+                        'tgt_process': myInits[0].to.node, 'tgt_port': myInits[0].to.port}, '$NOFLO_CONNECTION'));
+                    myInits.shift(); // Removes object [0] from list
+                }
+
+                // Add the created flow to the collection of the behaviour object
+                behaviourList.behaviourCollection.$push(flow);
+            });
         });
     }
 
@@ -366,13 +379,12 @@ RED.deploy = (function() {
 //            console.log('LINKS');
 //            console.log(RED.nodes.links);
 
-            console.log(nns);
+//            console.log(nns);
 
             var noflo = require('noflo');
 
             var graph = noflo.graph.createGraph("Graph");
             var weaver = window.weaver = new Weaver().connect('https://weaver-server.herokuapp.com');
-
 //            graph.addNode("optellen1", "weaver/PlusOne");
 //            graph.addNode("optellen2", "weaver/PlusOne");
 //            graph.addNode("Display", "weaver/Output");
