@@ -154,155 +154,6 @@ RED.deploy = (function() {
         return 0;
     }
 
-    /**
-     * This function requires a noflo graph and will translate it to a Weaver Object on the heroku server.
-     * This makes use of the Weaver-sdk.full.js
-     *
-     * @Param graph is a noflo graph created from a Node-RED flow
-     */
-    function graphToWeaverObject(graph)
-    {
-        // Retrieve the $ROOT Object which enlists all behaviours (for later retrieval)
-        weaver.get('Weaver Behaviours', {eagerness: -1}).then(function(entity){
-            window.behaviourList = entity;
-
-            // Create a new Weaver object/flow with the name of the graph
-            weaver.add({name: graph.name}, '$NOFLO_FLOW', graph.name);
-            weaver.get(graph.name, {eagerness: -1}).then(function(entity){
-                window.flow = entity;
-
-                // Create and push the noflo processes as a collection to a Weaver flow
-                flow.processes = weaver.collection();
-                flow.$push('processes');
-                var myNodes = graph.nodes;
-                while (myNodes.length > 0) {
-                    flow.processes.$push(weaver.add({'component': myNodes[0].component, 'name:': myNodes[0].id},
-                        '$NOFLO_PROCESS'));
-                    myNodes.shift(); // Removes object [0] from list
-                }
-
-                // Create and push the noflo connections as a collection to a Weaver flow
-                flow.connections = weaver.collection();
-                flow.$push('connections');
-
-                var myEdges = graph.edges;
-                while (myEdges.length > 0) {
-                    flow.connections.$push(weaver.add({
-                            'src_process': myEdges[0].from.node, 'src_port': myEdges[0].from.port,
-                            'tgt_process': myEdges[0].to.node, 'tgt_port': myEdges[0].to.port},
-                        '$NOFLO_CONNECTION'));
-                    myEdges.shift(); // Removes object [0] from list
-                }
-
-                // Push the noflo initializers to the connection collection of the Weaver flow
-                var myInits = graph.initializers;
-                while (myInits.length > 0) {
-                    flow.connections.$push(weaver.add({'data': myInits[0].from.data,
-                        'tgt_process': myInits[0].to.node, 'tgt_port': myInits[0].to.port}, '$NOFLO_CONNECTION'));
-                    myInits.shift(); // Removes object [0] from list
-                }
-
-                // Add the created flow to the collection of the behaviour object
-                behaviourList.behaviourCollection.$push(flow);
-            });
-        });
-    }
-
-    // This function requires the name (id) of a Weaver Object/flow which will be translated into a noflo graph
-    function weaverObjectToGraph(flowName)
-    {
-        var graph = noflo.graph.createGraph(flowName);
-
-        // Retrieve a Weaver object by it's name.
-        weaver.get(flowName, {eagerness: -1}).then(function(entity) {
-            window.flow = entity;
-
-            // Get the list of all processes from the Weaver flow and add it one-by-one to the graph
-            // This MUST be done before adding the connections
-            var myNodes = flow.processes.$linksArray();
-            while (myNodes.length > 0) {
-                graph.addNode(myNodes[0]['name:'], myNodes[0].component); // the
-                myNodes.shift(); // Removes object [0] from list
-            }
-
-            // Get a list of the connections and add them one-by-one to the graph
-            // It is impossible to add a edge to a non-existant node
-            var myConnections = flow.connections.$linksArray();
-            while (myConnections.length > 0) {
-                if (myConnections[0].data) /// If the connection has Data, it is an initial connection otherwise it's an edge
-                    graph.addInitial(myConnections[0].data, myConnections[0].tgt_process, myConnections[0].tgt_port);
-                else
-                    graph.addEdge(myConnections[0].src_process, myConnections[0].src_port, myConnections[0].tgt_process, myConnections[0].tgt_port);
-
-                myConnections.shift(); // Removes object [0] from list
-            }
-        });
-    }
-
-    function getNodeREDTabs(nns)
-    {
-        var tabs = [];
-        for (var i = 0; i < nns.length; i++)
-        {
-            if (nns[i].type === 'tab')
-            {
-                tabs.push(nns[i]);
-            }
-        }
-        return tabs;
-    }
-
-    function createNofloFromNodeRED(nns, nodes, links)
-    {
-        var graphs = [];
-        var flowTabs = getNodeREDTabs(nns);
-
-        // Loop through all the different flows and create a noflo graph of them
-        for (var i=0; i < flowTabs.length; i++) {
-            var graph = noflo.graph.createGraph(flowTabs[i].label);
-
-            // Add Nodes to Graph
-            for (var j = 0; j < nodes.length; j++) {
-                var node = nodes[j];
-
-                if (node.z === flowTabs[i].id) {
-                    if (node.inputs > 0) {
-                        if (node.name) // If name is given, use it, otherwise use UID
-                            graph.addNode(node.name, node.type);
-                        else
-                            graph.addNode(node.id, node.type);
-                    }
-                }
-            }
-
-            // Define Edges
-            for (var j = 0; j < links.length; j++) {
-                var link = links[j];
-                if (link.target.z === flowTabs[i].id) {
-                    // Add Edges to graph
-                    if (link.source.inputs == 0) {
-                        console.log(link.source);
-                        if (link.target.name)
-                            graph.addInitial(link.source.payload, link.target.name, link.target.type);
-                        else
-                            graph.addInitial(link.source.payload, link.target.id, link.target.type);
-                    } else {
-                        if (link.source.name && link.target.name) // If both names are given
-                            graph.addEdge(link.source.name, link.sourcePort, link.target.name, link.target.type);
-                        else if (link.source.name && !link.target.name) // If src name is given, target not
-                            graph.addEdge(link.source.name, link.sourcePort, link.target.id, link.target.type);
-                        else if (!link.source.name && link.target.name) // If src name is not given and target name is
-                            graph.addEdge(link.source.id, link.sourcePort, link.target.name, link.target.type);
-                        else // If neither of the names are given
-                            graph.addEdge(link.source.id, link.sourcePort, link.target.id, link.target.type);
-                    }
-                }
-            }
-            graphs.push(graph);
-        }
-        return graphs;
-    }
-
     function save(force) {
         if (true) {
             //$("#debug-tab-clear").click();  // uncomment this to auto clear debug on deploy
@@ -373,18 +224,36 @@ RED.deploy = (function() {
             }
             var nns = RED.nodes.createCompleteNodeSet();
 
-//            console.log('NODES');
-//            console.log(RED.nodes.nodes);
-//
-//            console.log('LINKS');
-//            console.log(RED.nodes.links);
+            /////////////////////////////////////////////////
+            // TODO -- START OF Node-RED TO WEAVER PROCESS //
+            /////////////////////////////////////////////////
 
-//            console.log(nns);
 
             var noflo = require('noflo');
 
-            var graph = noflo.graph.createGraph("Graph");
             var weaver = window.weaver = new Weaver().connect('https://weaver-server.herokuapp.com');
+
+            // Create Weaver flow (for all flows) and recreate noflo graph - for testing purposes
+            var graphs = RED.translation.createNofloFromNodeRED(nns, RED.nodes.nodes, RED.nodes.links);
+
+            for (var i = 0; i < graphs.length; i++)
+                RED.translation.graphToWeaverObject(graphs[i]);
+
+
+            // Retrieve all Weaver flow objects
+            RED.translation.fetchWeaverObjects();
+//            console.log(JSON.stringify(nns));
+//                .then(function(graphs){
+//                RED.translation.createNodeREDFromNoflo(graphs);
+//            });
+
+
+
+//            RED.translation.weaverObjectToGraph(graph.name);
+
+
+
+//            var graph = noflo.graph.createGraph("Graph");
 //            graph.addNode("optellen1", "weaver/PlusOne");
 //            graph.addNode("optellen2", "weaver/PlusOne");
 //            graph.addNode("Display", "weaver/Output");
@@ -395,38 +264,33 @@ RED.deploy = (function() {
 //            graph.addEdge("optellen1", "total", "optellen2", "number");
 //            graph.addEdge("optellen2", "total", "Display", "in");
 
-//            // Create Weaver flow (for all flows) and recreate noflo graph - for testing purposes
-            var graphs = createNofloFromNodeRED(nns, RED.nodes.nodes, RED.nodes.links);
-            for (var i = 0; i < graphs.length; i++)
-                graphToWeaverObject(graphs[i]);
-
-//            weaverObjectToGraph(graph.name);
-
-
-            noflo.createNetwork(graph, function(network) {
-                network.loader.registerComponent('weaver', 'PlusOne', {
-                    getComponent: function() {
-                        return new PlusOne;
-                    }
-                });
-//                network.loader.registerComponent('weaver', 'FunctionNode', {
+//            noflo.createNetwork(graph, function(network) {
+//                network.loader.registerComponent('weaver', 'PlusOne', {
 //                    getComponent: function() {
-//                        return new FunctionNode;
+//                        return new PlusOne;
 //                    }
 //                });
-                network.loader.registerComponent('weaver', 'Output', {
-                    getComponent: function() {
-                        return new Output;
-                    }
-                });
-                return network.connect(function() {
-                    return network.start(console.log('Network is now running!'));
-                });
-            }, true);
+////                network.loader.registerComponent('weaver', 'FunctionNode', {
+////                    getComponent: function() {
+////                        return new FunctionNode;
+////                    }
+////                });
+//                network.loader.registerComponent('weaver', 'Output', {
+//                    getComponent: function() {
+//                        return new Output;
+//                    }
+//                });
+//                return network.connect(function() {
+//                    return network.start(console.log('Network is now running!'));
+//                });
+//            }, true);
 
 
 
 
+            ///////////////////////////////////////////////
+            // TODO -- END OF Node-RED TO WEAVER PROCESS //
+            ///////////////////////////////////////////////
 
 
             $("#btn-deploy-icon").removeClass('fa-download');
@@ -434,7 +298,7 @@ RED.deploy = (function() {
             RED.nodes.dirty(false);
 
             // Add JSON to Weaver
-            weaver.add({'json':JSON.stringify(nns)}, 'json', 'JSON');
+//            weaver.add({'json':JSON.stringify(nns)}, 'json', 'JSON');
 
 //            weaver.get('JSON').then(function (entity) {
 //                console.log(entity.json);
