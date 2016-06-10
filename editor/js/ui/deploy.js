@@ -224,10 +224,6 @@ RED.deploy = (function() {
             }
             var nns = RED.nodes.createCompleteNodeSet();
 
-            /////////////////////////////////////////////////
-            // TODO -- START OF Node-RED TO WEAVER PROCESS //
-            /////////////////////////////////////////////////
-
 
             var noflo = require('noflo');
 
@@ -240,81 +236,24 @@ RED.deploy = (function() {
                 RED.translation.graphToWeaverObject(graphs[i]);
 
 
-            // Retrieve all Weaver flow objects
+            // Retrieve all Weaver flow objects, and translate them to Node-RED flow
             RED.translation.fetchWeaverObjects();
-//            console.log(JSON.stringify(nns));
-//                .then(function(graphs){
-//                RED.translation.createNodeREDFromNoflo(graphs);
-//            });
-
-
-
-//            RED.translation.weaverObjectToGraph(graph.name);
-
-
-
-//            var graph = noflo.graph.createGraph("Graph");
-//            graph.addNode("optellen1", "weaver/PlusOne");
-//            graph.addNode("optellen2", "weaver/PlusOne");
-//            graph.addNode("Display", "weaver/Output");
-//
-//            graph.addInitial("4",   "optellen1", "number");
-//            graph.addInitial("OLA", "optellen1", "ping");
-//
-//            graph.addEdge("optellen1", "total", "optellen2", "number");
-//            graph.addEdge("optellen2", "total", "Display", "in");
-
-//            noflo.createNetwork(graph, function(network) {
-//                network.loader.registerComponent('weaver', 'PlusOne', {
-//                    getComponent: function() {
-//                        return new PlusOne;
-//                    }
-//                });
-////                network.loader.registerComponent('weaver', 'FunctionNode', {
-////                    getComponent: function() {
-////                        return new FunctionNode;
-////                    }
-////                });
-//                network.loader.registerComponent('weaver', 'Output', {
-//                    getComponent: function() {
-//                        return new Output;
-//                    }
-//                });
-//                return network.connect(function() {
-//                    return network.start(console.log('Network is now running!'));
-//                });
-//            }, true);
-
-
-
-
-            ///////////////////////////////////////////////
-            // TODO -- END OF Node-RED TO WEAVER PROCESS //
-            ///////////////////////////////////////////////
 
 
             $("#btn-deploy-icon").removeClass('fa-download');
             $("#btn-deploy-icon").addClass('spinner');
             RED.nodes.dirty(false);
 
-            // Add JSON to Weaver
-//            weaver.add({'json':JSON.stringify(nns)}, 'json', 'JSON');
-
-//            weaver.get('JSON').then(function (entity) {
-//                console.log(entity.json);
-//                var weaverJSON = JSON.parse(entity.json);
-//                console.log(weaverJSON);
-//            });
-
-//            $.ajax({
-//                url: "flows",
-//                type: "POST",
-//                data: JSON.stringify(nns),
-//                contentType: "application/json; charset=utf-8",
-//                headers: {
-//                    "Node-RED-Deployment-Type":deploymentType
-//                }
-//            }).done(function(data,textStatus,xhr) {
+    RED.export = (function (nns, deploymentType) {
+            $.ajax({
+                url: "flows",
+                type: "POST",
+                data: JSON.stringify(nns),
+                contentType: "application/json; charset=utf-8",
+                headers: {
+                    "Node-RED-Deployment-Type":deploymentType
+                }
+            }).done(function(data,textStatus,xhr) {
                 if (hasUnusedConfig) {
                     RED.notify(
                     '<p>'+RED._("deploy.successfulDeploy")+'</p>'+
@@ -340,17 +279,18 @@ RED.deploy = (function() {
                 RED.history.markAllDirty();
                 RED.view.redraw();
                 RED.events.emit("deploy");
-//            }).fail(function(xhr,textStatus,err) {
-//                RED.nodes.dirty(true);
-//                if (xhr.responseText) {
-//                    RED.notify(RED._("notification.error",{message:xhr.responseText}),"error");
-//                } else {
-//                    RED.notify(RED._("notification.error",{message:RED._("deploy.errors.noResponse")}),"error");
-//                }
-//            }).always(function() {
+            }).fail(function(xhr,textStatus,err) {
+                RED.nodes.dirty(true);
+                if (xhr.responseText) {
+                    RED.notify(RED._("notification.error",{message:xhr.responseText}),"error");
+                } else {
+                    RED.notify(RED._("notification.error",{message:RED._("deploy.errors.noResponse")}),"error");
+                }
+            }).always(function() {
                 $("#btn-deploy-icon").removeClass('spinner');
                 $("#btn-deploy-icon").addClass('fa-download');
-//            });
+            });
+            });
         }
     }
 
